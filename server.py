@@ -137,17 +137,20 @@ class Handler(BaseHTTPRequestHandler):
         raw=json.dumps(data,ensure_ascii=False).encode(); self.send_response(status)
         self.send_header('Content-Type','application/json; charset=utf-8'); self.end_headers(); self.wfile.write(raw)
     def do_GET(self):
-        if self.path == '/simulation.js':
+        assets = {
+            '/ward.css': 'text/css; charset=utf-8',
+            '/body-map.svg': 'image/svg+xml',
+            '/exam.js': 'text/javascript; charset=utf-8',
+            '/simulation.js': 'text/javascript; charset=utf-8',
+            '/diagnosis.js': 'text/javascript; charset=utf-8',
+        }
+        if self.path in assets:
+            data = (ROOT / self.path[1:]).read_bytes()
             self.send_response(200)
-            self.send_header('Content-Type', 'text/javascript; charset=utf-8')
+            self.send_header('Content-Type', assets[self.path])
+            self.send_header('Content-Length', str(len(data)))
             self.end_headers()
-            self.wfile.write((ROOT / 'simulation.js').read_bytes())
-            return
-        if self.path == '/diagnosis.js':
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/javascript; charset=utf-8')
-            self.end_headers()
-            self.wfile.write((ROOT / 'diagnosis.js').read_bytes())
+            self.wfile.write(data)
             return
         if self.path=='/api/patients':
             return self.reply({'patients':[{'id':p['id'],'chart':p['chart']} for p in CASES.values()]})
@@ -172,6 +175,9 @@ class Handler(BaseHTTPRequestHandler):
             with session['lock']:
                 state=session['state']
                 if self.path == '/api/simulation':
+                    if simulation.needs_bedside_restore(session):
+                        return self.reply(simulation.launch(data['id'], session, CASES[session['patientId']],
+                                                            'restoreBedside', {}, model, persist), 202)
                     return self.reply(simulation.public_state(session))
                 if self.path in ('/api/submit', '/api/advance', '/api/discharge'):
                     if self.path == '/api/discharge' and session.get('outcome'):

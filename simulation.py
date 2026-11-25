@@ -10,7 +10,7 @@ from diagnosis import new_findings
 
 POOL = ThreadPoolExecutor(max_workers=8)
 SPECIALISTS = ThreadPoolExecutor(max_workers=4)
-PUBLIC = ('minute', 'patient', 'appearance', 'observations', 'devices', 'auscultation', 'uncertainties')
+PUBLIC = ('minute', 'patient', 'appearance', 'observations', 'devices', 'bedsideRecords', 'auscultation', 'uncertainties')
 
 ROUTER = '''你负责虚构诊疗游戏的行动理解与调度。根据行动确定 observation/intervention/wait。
 普通问诊和无创检测为observation；会影响身体的检查、用药、操作为intervention。
@@ -51,6 +51,105 @@ OBSERVE = '''你负责虚构病例的观察与表达，读取采集时的状态�
 保留病例diagnosticClues的信息边界。结果属于sampleMinute，报告于reportMinute回传。
 只输出JSON {"findings":[{"method":"...","result":"...","sampleMinute":数字}],
 "speech":"患者自然表达或空字符串"}。问诊结果也记录在findings。'''
+
+ROUTER += """
+额外输出bedside数组，列出本次实际使用的床旁设备，每个测量通道一项
+{op:connect|disconnect|record, id:稳定的英文通道标识, label:中文名称}。
+持续监护、连接后留置使用connect，撤机用disconnect。一次性检测或记录用record。
+结合原始请求判断持续与单次，复用knownState.devices已有的id。普通问诊等返回空数组。
+"""
+OBSERVE += """
+如果requestedRecords非空，逐项返回recordings数组，每项为
+{id,reading:仪器测得的数值或简短文字,unit,signal:null或{shape:"regular",rate:数值}}。
+仅在心电节律可用规则示意波形表达时给signal。根据采样时状态生成读数，与findings保持一致。
+sampledState.devices同一时点的实测读数是已确定事实，应沿用。
+"""
+MONITOR = """你负责虚构病人已连接床旁设备的读数投影。根据当前时点的身体状态与此前读数，
+只输出指定channels可测到的读数，不能泄露隐藏诊断。返回JSON对象含readings数组，每个通道恰好一项
+{id,reading:仪器测得的数值或简短文字,unit:单位字符串,signal:null或{shape:"regular",rate:数值}}。
+只有心电通道且节律适合用规则心搏波形示意时给signal，rate与显示的心率一致。
+信号不可取得时如实写明。不要将之前采样的数值冒充当前实测数值。"""
+
+
+def bedside_values(items, channels, minute):
+    if not isinstance(items, list) or len(items) != len(channels):
+        raise ValueError('设备读数数量与通道不符')
+    values = []
+    for channel in channels:
+        item = next((v for v in items if isinstance(v, dict) and v.get('id') == channel['id']), {})
+        reading = item.get('reading')
+        if type(reading) not in (str, float, int) or not str(reading).strip():
+            raise ValueError('设备缺少有效读数')
+        value = {**channel, 'reading': reading, 'unit': str(item.get('unit') or ''), 'sampleMinute': minute}
+        signal = item.get('signal')
+        if isinstance(signal, dict) and signal.get('shape') == 'regular' and number(signal.get('rate')) > 0:
+            value['signal'] = {'rate': signal['rate'], 'shape': 'regular'}
+        values.append(value)
+    return values
+
+
+def bedside_changes(changes):
+    if not isinstance(changes, list) or any(not isinstance(c, dict) or
+            c.get('op') not in ('record', 'connect', 'disconnect') or
+            not all(isinstance(c.get(k), str) and c[k].strip() for k in ('id', 'label'))
+            for c in changes):
+        raise ValueError('设备操作格式无效')
+    return [{k: c[k] for k in ('id', 'label', 'op')} for c in changes]
+
+
+def restore_bedside(model, session):
+    rt = runtime(session)
+    tasks = sorted((t for t in rt['queue'] if t['status'] in ('completed', 'awaiting_report')),
+                   key=lambda t: t['sampleMinute'])
+    old = [t for t in tasks if 'bedside' not in t]
+    reports = {(e.get('action'), e.get('timing', {}).get('sampleMinute')): e.get('findings', [])
+               for e in session['events']}
+    history = [{'taskId': t['id'], 'action': t['action'], 'minute': t['sampleMinute'],
+                'findings': reports.get((t['action'], t['sampleMinute']), [])} for t in old]
+    result = call(model, rt, 'deviceHistory', ROUTER + """
+现在输入是旧存档中实际已执行的行动和已回报所见。只恢复设备操作，不重新诊疗或估计耗时。
+输出 {"tasks":[{"taskId":"与输入一致","bedside":[{"op":"connect","id":"稳定通道名","label":"设备及测量项目中文名"}]}]}。
+每个输入taskId恰好一项。持续心电监护必须是connect，单次记录是record；没有设备的项目用空数组。
+同一设备的接通与撤除使用同一id。只识别已执行的动作，建议、计划和报告里提到的设备不算。""",
+                  {'history': history})
+    entries = result.get('tasks')
+    if not isinstance(entries, list) or len(entries) != len(old):
+        raise ValueError('旧记录设备操作数量不符')
+    by_id = {item['taskId']: bedside_changes(item.get('bedside')) for item in entries}
+    for t in old:
+        t['bedside'] = by_id[t['id']]
+    for t in tasks:
+        apply_connections(session['state'], t['bedside'])
+    measure_monitors(model, rt, session['state'])
+    rt['notice'] = '已按完成的操作恢复床旁设备。'
+
+
+def needs_bedside_restore(session):
+    rt = runtime(session)
+    job = rt.get('job') or {}
+    return (not session.get('outcome') and job.get('status') != 'running'
+            and not (job.get('operation') == 'restoreBedside' and job.get('status') == 'error')
+            and any('bedside' not in t and t['status'] in ('completed', 'awaiting_report') for t in rt['queue']))
+
+
+def apply_connections(state, changes):
+    devices = list(state.get('devices') or [])
+    for change in changes:
+        if change['op'] == 'record':
+            continue
+        devices = [d for d in devices if d.get('id', d.get('kind')) != change['id']]
+        if change['op'] == 'connect':
+            devices.append({'id': change['id'], 'label': change['label']})
+    state['devices'] = devices
+
+
+def measure_monitors(model, rt, state):
+    channels = [{'id': d.get('id', d.get('kind')), 'label': d.get('label') or d.get('kind')}
+                for d in state.get('devices') or [] if d.get('id') or d.get('kind')]
+    if channels:
+        result = call(model, rt, 'monitor', MONITOR, {'state': state, 'channels': channels})
+        state['devices'] = bedside_values(result.get('readings'), channels, state['minute'])
+
 
 ENDING = '''你是虚构医学游戏的出院后日谈作者。玩家已经结束本次诊疗。
 根据离院时的真实身体状态、已生效治疗、药物暴露、已采样潜在事件、未解决疾病和生活情况，
@@ -193,8 +292,13 @@ def schedule(model, session, case, action):
         'operationEnd': now + prep + procedure, 'sampleMinute': now + prep + procedure,
         'readyMinute': now + prep + procedure + delay, 'status': 'scheduled',
     }
+    changes = bedside_changes(result.get('bedside'))
+    task['bedside'] = changes
     rt['queue'].append(task)
     if task['sampleMinute'] == now:
+        apply_connections(session['state'], changes)
+        if changes:
+            measure_monitors(model, rt, session['state'])
         task['sample'] = copy.deepcopy(session['state'])
         task['status'] = 'awaiting_report'
     if kind == 'intervention':
@@ -242,6 +346,11 @@ def advance(model, session, case, target=None):
         before = copy.deepcopy(session['state'])
         session['state'].update(copy.deepcopy(matching))
         rt['forecast'] = [n for n in rt['forecast'] if n['minute'] > step]
+        sampling = [t for t in rt['queue'] if t['status'] == 'scheduled' and t['sampleMinute'] == step]
+        for task in sampling:
+            apply_connections(session['state'], task.get('bedside', []))
+        if sampling or step == target:
+            measure_monitors(model, rt, session['state'])
         for task in rt['queue']:
             if task['status'] == 'completed':
                 continue
@@ -249,12 +358,17 @@ def advance(model, session, case, target=None):
                 task['sample'] = copy.deepcopy(session['state'])
                 task['status'] = 'awaiting_report'
             if step >= task['readyMinute']:
+                channels = [{k: change[k] for k in ('id', 'label')}
+                            for change in task.get('bedside', []) if change['op'] == 'record']
                 report = call(model, rt, 'observation', OBSERVE, {
-                    'requestedAction': task['action'], 'sampleMinute': task['sampleMinute'],
+                    'requestedRecords': channels, 'requestedAction': task['action'], 'sampleMinute': task['sampleMinute'],
                     'reportMinute': step, 'sampledState': task['sample'],
                     'patientHistory': session.get('patientKnowledge', []),
                     'diagnosticClues': case.get('clues', []),
                 })
+                if channels:
+                    values = bedside_values(report.get('recordings'), channels, task['sampleMinute'])
+                    session['state'].setdefault('bedsideRecords', []).extend(values)
                 proposed = report.get('findings')
                 if not isinstance(proposed, list):
                     raise ValueError('观察反馈缺少所见列表')
@@ -322,7 +436,9 @@ def launch(sid, session, case, operation, data, model, persist):
 
     def work():
         try:
-            if operation == 'submit':
+            if operation == 'restoreBedside':
+                restore_bedside(model, snapshot)
+            elif operation == 'submit':
                 schedule(model, snapshot, case, str(data['action']))
             elif operation == 'advance':
                 advance(model, snapshot, case)

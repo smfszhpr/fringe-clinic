@@ -18,7 +18,7 @@ class TimelineTests(unittest.TestCase):
         if 'knownState' in payload:
             surgery = payload['action'] == 'surgery'
             return {'kind': 'intervention' if surgery else 'observation',
-                    'label': payload['action'], 'preparation': 2, 'procedure': 8,
+                    'bedside': [], 'label': payload['action'], 'preparation': 2, 'procedure': 8,
                     'reportDelay': 10, 'specialties': ['perioperative'] if surgery else []}, {}
         if 'assignedSpecialty' in payload:
             return {'process': '术后恢复', 'events': [
@@ -60,6 +60,58 @@ class TimelineTests(unittest.TestCase):
         self.assertTrue(risks[0]['events'][0]['selected'])
         advance(self.model, self.session, self.case)
         self.assertEqual(rt['processes'], risks)
+
+    def test_connected_monitor_record_and_disconnect(self):
+        def devices(prompt, payload):
+            if 'channels' in payload:
+                return {'readings': [{'id': 'hr', 'reading': 70 + payload['state']['minute'],
+                                      'unit': 'bpm'}]}, {}
+            result, usage = self.model(prompt, payload)
+            if 'knownState' in payload:
+                op = payload['action']
+                result['bedside'] = [{'op': op, 'id': 'hr', 'label': '心率'}]
+            if payload.get('requestedRecords'):
+                result['recordings'] = [{'id': 'hr', 'reading': 90, 'unit': 'bpm'}]
+            return result, usage
+
+        state = self.session['state']
+        schedule(devices, self.session, self.case, 'connect')
+        self.assertFalse(state.get('devices'))
+        advance(devices, self.session, self.case, 10)
+        self.assertEqual(state['devices'][0]['reading'], 80)
+        schedule(devices, self.session, self.case, 'record')
+        advance(devices, self.session, self.case, 20)
+        self.assertFalse(state.get('bedsideRecords'))
+        advance(devices, self.session, self.case, 30)
+        self.assertEqual(state['bedsideRecords'][0]['sampleMinute'], 20)
+        self.assertEqual(state['devices'][0]['reading'], 100)
+        schedule(devices, self.session, self.case, 'disconnect')
+        advance(devices, self.session, self.case, 40)
+        self.assertFalse(state['devices'])
+        self.assertEqual(public_state(self.session)['view']['bedsideRecords'][0]['reading'], 90)
+
+    def test_restore_legacy_monitor_at_current_minute(self):
+        from simulation import needs_bedside_restore, restore_bedside
+        schedule(self.model, self.session, self.case, 'ecg')
+        advance(self.model, self.session, self.case, 20)
+        task = runtime(self.session)['queue'][0]
+        del task['bedside']
+        events = copy.deepcopy(self.session['events'])
+
+        def recover(prompt, payload):
+            if 'history' in payload:
+                self.assertEqual(payload['history'][0]['findings'], events[0]['findings'])
+                return {'tasks': [{'taskId': task['id'], 'bedside': [
+                    {'op': 'connect', 'id': 'ecg', 'label': '心电监护'}]}]}, {}
+            return {'readings': [{'id': 'ecg', 'reading': 86, 'unit': '次/分',
+                                  'signal': {'rate': 86, 'shape': 'regular'}}]}, {}
+
+        self.assertTrue(needs_bedside_restore(self.session))
+        restore_bedside(recover, self.session)
+        device = public_state(self.session)['view']['devices'][0]
+        self.assertEqual((device['sampleMinute'], device['signal']['rate']), (20, 86))
+        self.assertEqual(self.session['events'], events)
+        self.assertFalse(needs_bedside_restore(self.session))
 
     def test_discharge_uses_life_and_internal_state(self):
         discharge(self.model, self.session, self.case)

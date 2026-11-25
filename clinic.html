@@ -2,10 +2,19 @@
 <style>
 :root{color-scheme:dark;--bg:#0c161c;--panel:#13232d;--line:#2b414c;--muted:#91a8b2;--mint:#91dfcc}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#e1ecef;font:15px/1.6 system-ui}header{display:flex;justify-content:space-between;align-items:center;padding:22px 32px;border-bottom:1px solid var(--line)}h1{font-size:25px;margin:0;letter-spacing:3px}h2{font-size:16px;margin:0 0 16px}small,.muted{color:var(--muted)}main{display:grid;grid-template-columns:280px minmax(340px,1fr) 340px;gap:16px;padding:22px;max-width:1600px;margin:auto}section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}.tag{border:1px solid #35574e;color:var(--mint);padding:5px 12px;border-radius:20px;font-size:12px}textarea,input,select{background:#0e1d25;color:#e1ecef;border:1px solid #39515d;border-radius:8px;padding:12px;font:inherit}textarea{width:100%;resize:vertical;min-height:88px}button{background:#8edbc8;color:#112b28;border:0;padding:11px 16px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}button.secondary{background:#223a46;color:#d1e4e9}button:disabled{opacity:.45;cursor:wait}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.space{margin-top:14px}#log{height:410px;overflow:auto;padding-right:8px}.bubble{padding:12px 14px;background:#1a303b;border-radius:9px;margin:10px 0;white-space:pre-wrap}.bubble.action{background:#203c3b;color:#bbecdf}.bubble.error{border:1px solid #b57860;color:#ffc6ab}.bubble small{display:block;margin-bottom:4px}svg{width:100%;height:370px;background:radial-gradient(ellipse,#23404b,transparent 65%)}.evidence{border-top:1px solid var(--line);padding:10px 0;white-space:pre-wrap}.device{background:#09151a;border:1px solid #305049;border-radius:9px;padding:12px;margin:8px 0}.reading{font-size:27px;color:var(--mint);font-variant-numeric:tabular-nums}canvas{width:100%;height:75px}#status{font-size:12px;color:var(--muted)}details summary{cursor:pointer;color:var(--muted)}#assistant{white-space:pre-wrap}.banner{border:1px solid #426259;padding:10px 14px;margin:0 22px;border-radius:8px;font-size:13px;color:#aacec3}#busy{color:var(--mint);min-height:22px} @media(max-width:1100px){main{grid-template-columns:240px 1fr}main>section:last-child{grid-column:1/-1}}@media(max-width:650px){main{display:block;padding:12px}section{margin-bottom:12px}header{padding:16px}}
 </style>
-<header><div><small>CRITICAL CLINIC / AI PATIENT SIMULATION</small><h1>临界诊室</h1></div><div><span class="tag" id="clock">待接诊</span><div id="status">正在连接本地服务…</div></div></header>
-<main><section><h2>身体观察</h2><svg viewBox="0 0 240 420" id="body"><g fill="#bda38f" stroke="#69818b" stroke-width="1.5"><ellipse cx="120" cy="50" rx="29" ry="37"/><path d="M102 86L83 106L68 190L48 250L61 258L91 196L97 159L98 250L90 371L110 379L120 278L130 379L150 371L142 250L143 159L150 196L179 258L192 250L172 190L157 106L138 86Z"/></g><path d="M98 235H142V265L120 280L98 265Z" fill="#3e596a"/><g id="marks"></g></svg><p class="muted" id="appearance">等待生成患者。点击身体部位可填入观察行动。</p><small>2D 人体示意 · 不显示隐藏病变</small><hr><div id="devices"><small>未连接监测设备</small></div><button id="listen" class="secondary space" hidden>播放听诊示意声音</button></section>
-<section><div class="row" style="justify-content:space-between"><h2>诊疗现场</h2><button id="review" class="secondary">复盘</button></div><div id="log"><div class="bubble">欢迎来到诊室。填写病例设定后开始接诊；接诊后可以自由问诊、检查与处置。</div></div><div id="busy"></div><textarea id="input" placeholder="例如：骑手在晕厥后发生事故，有外伤，需追查晕厥原因"></textarea><div class="row space"><button id="start">开始新病例</button><button id="action">执行行动</button><label class="muted">推进 <input id="minutes" type="number" value="1" min="0" max="120" style="width:65px"> 分钟</label></div><div class="row space"><button class="secondary preset" data-text="观察患者的意识、呼吸和可见体表异常">观察</button><button class="secondary preset" data-text="连接心电监护仪，持续监测">连接监护</button><button class="secondary preset" data-text="使用听诊器检查胸部，描述所听到的声音">听诊</button><button class="secondary preset" data-text="暂不干预，观察病情变化">等待</button></div><small>快捷按钮仅填入行动；所有病情反馈均由模型推演。</small></section>
-<section><h2>已获得的证据</h2><div id="evidence" style="max-height:280px;overflow:auto"><small>检查完成后在这里显示结果。</small></div><hr><h2>辅助 AI</h2><textarea id="question" placeholder="请帮我梳理线索，或建议下一步问诊和检查"></textarea><div class="row space"><button id="ask">询问助手</button><button id="patient" class="secondary">询问病人</button></div><div id="assistant" class="space"></div><button id="confirm" class="space" hidden>确认执行建议</button><details class="space"><summary>模拟不确定性</summary><div id="uncertainties"></div></details></section></main>
+<link rel="stylesheet" href="/ward.css"><body class="clinic">
+<header class="mast"><div class="brand"><b aria-hidden="true">✚</b><div><small>FRINGE CLINIC</small><h1>临界诊室</h1></div></div><nav><a href="/">患者接诊</a><span aria-current="page">诊疗工作台</span></nav><div id="status">正在连接服务…</div></header>
+<div class="context"><div><small>当前患者</small><h2 id="patientName">待接诊</h2></div><div class="row" id="chartTools"></div><span class="tag" id="clock">待接诊</span></div>
+<main><section class="exam"><h2>身体观察</h2><figure>
+<span class="orientation">患者右侧</span><span class="orientation left">患者左侧</span>
+<svg id="body" viewBox="0 0 240 420" aria-label="正面体表图，选择部位可填写查体行动">
+<image href="/body-map.svg" x="0" width="240" height="420" preserveAspectRatio="none"/>
+<g id="regions"></g><g id="marks"></g></svg>
+<figcaption>体表参考图 · 正位</figcaption></figure>
+<label class="region-label" for="region">查体部位</label><select id="region"><option value="">点选体表或选择部位</option></select>
+<h3>可见表现</h3><p id="appearance">接诊后显示患者表现。</p><div id="injuryList"></div><h3>床旁设备</h3><div id="devices"></div><div id="bedsideRecords"></div><button id="listen" class="secondary space" hidden>播放听诊声音</button></section>
+<section><div class="row" style="justify-content:space-between"><h2>诊疗现场</h2><button id="review" class="secondary">复盘</button></div><div id="log"><div class="bubble">欢迎来到诊室。填写病例设定后开始接诊；接诊后可以自由问诊、检查与处置。</div></div><div id="busy" role="status"></div><textarea aria-label="诊疗行动" id="input" placeholder="例如：骑手在晕厥后发生事故，有外伤，需追查晕厥原因"></textarea><div class="row space"><button id="start">开始新病例</button><button id="action">执行行动</button><label class="muted">推进 <input id="minutes" type="number" value="1" min="0" max="120" style="width:65px"> 分钟</label></div><div class="row space"><button class="secondary preset" data-text="观察患者的意识、呼吸和可见体表异常">观察</button><button class="secondary preset" data-text="连接心电监护仪，持续监测">连接监护</button><button class="secondary preset" data-text="使用听诊器检查胸部，描述所听到的声音">听诊</button><button class="secondary preset" data-text="暂不干预，观察病情变化">等待</button></div><small>快捷按钮仅填入行动；所有病情反馈均由模型推演。</small></section>
+<section class="consult"><h2>已获得的证据</h2><div id="evidence" style="max-height:280px;overflow:auto"><small>检查完成后在这里显示结果。</small></div><hr><h2>辅助 AI</h2><textarea aria-label="向助手或患者提问" id="question" placeholder="请帮我梳理线索，或建议下一步问诊和检查"></textarea><div class="row space"><button id="ask">询问助手</button><button id="patient" class="secondary">询问病人</button></div><div id="assistant" class="space"></div><button id="confirm" class="space" hidden>确认执行建议</button><details class="space"><summary>模拟不确定性</summary><div id="uncertainties"></div></details></section></main>
 <div class="banner">虚构医学推理游戏。设备波形和音频为模型参数驱动的示意；真实临床诊断精度尚未验证。</div>
 <script>
 const $=id=>document.getElementById(id);let sid=localStorage.getItem('clinic-session'),busy=false,suggestion='',current={},audioCtx;
@@ -13,12 +22,68 @@ function text(v){return typeof v==='string'?v:JSON.stringify(v,null,2)}function 
 function controls(){document.querySelectorAll('button').forEach(b=>b.disabled=busy);['action','review','ask','patient'].forEach(k=>$(k).disabled=busy||!sid)}
 async function api(route,data={}){const res=await fetch('/api/'+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:sid,...data})});const result=await res.json();if(!res.ok)throw Error(result.error||'服务请求失败');return result}
 async function task(label,fn){if(busy)return;busy=true;controls();let seconds=0;$('busy').textContent=label;const timer=setInterval(()=>$('busy').textContent=label+' · '+(++seconds)+'秒',1000);try{await fn()}catch(e){add('本轮未完成：'+e.message,'error')}finally{clearInterval(timer);$('busy').textContent='';busy=false;controls()}}
-function view(v){current=v;$('clock').textContent='病程 '+v.minute+' 分钟';if(v.patient?.speech)add(v.patient.speech);$('appearance').textContent=[v.appearance?.posture,v.appearance?.breathing].filter(Boolean).map(text).join('；')||'暂无新的体表描述';$('marks').replaceChildren();for(const injury of v.appearance?.injuries||[]){if(!Number.isFinite(injury.x)||!Number.isFinite(injury.y))continue;const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',Math.max(0,Math.min(240,injury.x)));c.setAttribute('cy',Math.max(0,Math.min(420,injury.y)));c.setAttribute('r','8');c.setAttribute('fill','#d47067');c.setAttribute('opacity','.8');const t=document.createElementNS(c.namespaceURI,'title');t.textContent=injury.label||'体表异常';c.append(t);$('marks').append(c)}$('evidence').replaceChildren();for(const o of v.observations||[]){const e=document.createElement('div');e.className='evidence';e.textContent=text(o);$('evidence').append(e)}$('uncertainties').textContent=text(v.uncertainties||[]);$('devices').replaceChildren();for(const d of v.devices||[]){const box=document.createElement('div');box.className='device';const label=document.createElement('small');label.textContent=d.label||d.kind;const reading=document.createElement('div');reading.className='reading';reading.textContent=text(d.reading??'—')+' '+(d.unit||'');box.append(label,reading);if(d.signal&&Number.isFinite(d.signal.rate)){const canvas=document.createElement('canvas');canvas.width=460;canvas.height=120;canvas.dataset.rate=d.signal.rate;canvas.dataset.shape=d.signal.shape;box.append(canvas)}$('devices').append(box)}$('listen').hidden=!v.auscultation?.sound;if(v.auscultation?.description)add('听诊：'+v.auscultation.description)}
+function deviceCard(device, recorded) {
+    const box = document.createElement('div');
+    box.className = 'device';
+    const label = document.createElement('small');
+    const minute = device.sampleMinute;
+    label.textContent = [device.label || device.kind, recorded ? '单次记录' : '持续监护',
+        Number.isFinite(minute) ? '第 ' + minute + ' 分钟采集' : ''].filter(Boolean).join(' · ');
+    const reading = document.createElement('div');
+    reading.className = 'reading';
+    const value = String(device.reading ?? '等待读数');
+    const hasSummary = typeof device.reading === 'string' && !Number.isFinite(Number(value));
+    if (hasSummary && Number.isFinite(device.signal?.rate)) {
+        reading.textContent = device.signal.rate + ' 次/分';
+        const summary = document.createElement('div');
+        summary.textContent = value;
+        box.append(label, reading, summary);
+    } else {
+        reading.textContent = hasSummary ? value : [value, device.unit].filter(Boolean).join(' ');
+        if (hasSummary) reading.style.fontSize = '1rem';
+        box.append(label, reading);
+    }
+    if (Number.isFinite(device.signal?.rate) && ['regular','flat'].includes(device.signal.shape)) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 460;
+        canvas.height = 120;
+        canvas.dataset.rate = device.signal.rate;
+        canvas.dataset.shape = device.signal.shape;
+        if (recorded) canvas.dataset.snapshot = 'yes';
+        canvas.setAttribute('aria-label', '心电节律示意波形');
+        box.append(canvas);
+    }
+    return box;
+}
+function renderBedside(state) {
+    const active = state.devices || [];
+    $('devices').replaceChildren(...active.map(d => deviceCard(d, false)));
+    const records = state.bedsideRecords || [];
+    const archive = $('bedsideRecords');
+    archive.replaceChildren();
+    if (records.length) {
+        archive.append(deviceCard(records[records.length - 1], true));
+        if (records.length > 1) {
+            const details = document.createElement('details');
+            const title = document.createElement('summary');
+            title.textContent = '此前的设备记录（' + (records.length - 1) + '）';
+            details.append(title, ...records.slice(0,-1).reverse().map(d => deviceCard(d, true)));
+            archive.append(details);
+        }
+    } else if (!active.length && state.observations?.length) {
+        const last = state.observations.at(-1);
+        const title = document.createElement('strong');
+        title.textContent = '最近一次检查或问诊回报';
+        const report = document.createElement('p');
+        report.textContent = typeof last === 'string' ? last : [last.method, last.result].filter(Boolean).map(text).join(' · ');
+        if (report.textContent) archive.append(title, report);
+    }
+}
+function view(v){current=v;$('clock').textContent='病程 '+v.minute+' 分钟';if(v.patient?.speech)add(v.patient.speech);$('appearance').textContent=[v.appearance?.posture,v.appearance?.breathing].filter(Boolean).map(text).join('；')||'暂无新的体表描述';$('marks').replaceChildren();for(const injury of v.appearance?.injuries||[]){if(!Number.isFinite(injury.x)||!Number.isFinite(injury.y))continue;const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',Math.max(0,Math.min(240,injury.x)));c.setAttribute('cy',Math.max(0,Math.min(420,injury.y)));c.setAttribute('r','8');c.setAttribute('fill','#d47067');c.setAttribute('opacity','.8');const t=document.createElementNS(c.namespaceURI,'title');t.textContent=injury.label||'体表异常';c.append(t);$('marks').append(c)}$('evidence').replaceChildren();for(const o of v.observations||[]){const e=document.createElement('div');e.className='evidence';e.textContent=text(o);$('evidence').append(e)}$('uncertainties').textContent=text(v.uncertainties||[]);renderBedside(v);$('listen').hidden=!v.auscultation?.sound;if(v.auscultation?.description)add('听诊：'+v.auscultation.description)}
 $('start').onclick=()=>task('正在建立患者状态',async()=>{const r=await api('start',{case:$('input').value||undefined});sid=r.id;localStorage.setItem('clinic-session',sid);$('log').replaceChildren();view(r.view);$('input').value='' });
 async function action(value){add(value,'action');const r=await api('action',{action:value,minutes:Number($('minutes').value)});if(r.clarification)add('需要补充：'+text(r.clarification));else view(r.view)}$('action').onclick=()=>task('正在推演身体变化',()=>action($('input').value));document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{$('input').value=b.dataset.text;$('input').focus()});
 $('ask').onclick=()=>task('辅助 AI 正在分析',async()=>{const r=await api('assistant',{question:$('question').value});$('assistant').textContent=r.reply;suggestion=r.suggestedAction;$('confirm').hidden=!suggestion;$('confirm').textContent='确认执行：'+suggestion});$('confirm').onclick=()=>task('正在执行助手建议',()=>action(suggestion));$('patient').onclick=()=>task('患者正在回答',async()=>{const r=await api('patient',{question:$('question').value});add('问诊：'+$('question').value,'action');add(r.reply)});$('review').onclick=()=>task('正在整理病程复盘',async()=>add((await api('review')).review));
-$('body').onclick=e=>{const r=$('body').getBoundingClientRect(),y=(e.clientY-r.top)/r.height;const part=y<.22?'头部':y<.48?'胸部':y<.65?'腹部':'下肢';$('input').value='观察并检查患者'+part};
-function animate(t){for(const c of document.querySelectorAll('canvas')){const ctx=c.getContext('2d'),rate=Number(c.dataset.rate);ctx.clearRect(0,0,460,120);ctx.strokeStyle='#204038';ctx.lineWidth=1;for(let x=0;x<460;x+=23){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,120);ctx.stroke()}ctx.strokeStyle='#90e6bb';ctx.lineWidth=2;ctx.beginPath();for(let x=0;x<460;x++){const p=((x/460*4+t/1000)*rate/60)%1;let y=60;if(c.dataset.shape!=='flat')y+=8*Math.exp(-Math.pow((p-.2)/.05,2))-42*Math.exp(-Math.pow((p-.45)/.018,2))+16*Math.exp(-Math.pow((p-.49)/.025,2))-10*Math.exp(-Math.pow((p-.7)/.08,2));x?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}requestAnimationFrame(animate)}requestAnimationFrame(animate);
+function animate(t){for(const c of document.querySelectorAll('canvas')){const ctx=c.getContext('2d'),rate=Number(c.dataset.rate);ctx.clearRect(0,0,460,120);ctx.strokeStyle='#204038';ctx.lineWidth=1;for(let x=0;x<460;x+=23){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,120);ctx.stroke()}ctx.strokeStyle='#90e6bb';ctx.lineWidth=2;ctx.beginPath();for(let x=0;x<460;x++){const p=((x/460*4+(c.dataset.snapshot?0:t/1000))*rate/60)%1;let y=60;if(c.dataset.shape!=='flat')y+=8*Math.exp(-Math.pow((p-.2)/.05,2))-42*Math.exp(-Math.pow((p-.45)/.018,2))+16*Math.exp(-Math.pow((p-.49)/.025,2))-10*Math.exp(-Math.pow((p-.7)/.08,2));x?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}requestAnimationFrame(animate)}requestAnimationFrame(animate);
 $('listen').onclick=()=>{const sound=current.auscultation?.sound;if(!sound)return;audioCtx??=new AudioContext();audioCtx.resume();const now=audioCtx.currentTime,rate=Number(sound.rate);if(!Number.isFinite(rate)||rate<=0)return;for(let i=0;i<Math.min(12,rate/10);i++){const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='sine';osc.frequency.value=sound.kind==='heart'?75:sound.kind==='wheeze'?650:200;const at=now+i*60/rate;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.12,at+.03);gain.gain.exponentialRampToValueAtTime(.001,at+.2);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(at);osc.stop(at+.25)}};
 controls();fetch('/api/health').then(r=>r.json()).then(r=>{$('status').textContent=r.ready?'模型已配置 · '+r.model:'模型尚未配置，请填写 .env'}).catch(()=>$('status').textContent='本地服务未连接');if(sid)task('恢复上次会话',async()=>{const r=await api('restore');add('已恢复上次会话，累计 '+r.events.length+' 次行动');view(r.view)});
 // Readable clinical records and independent time planning.
@@ -30,5 +95,5 @@ planConfirm.onclick=()=>task('正在模拟操作与等待期间的病程',async(
 if(current?.observations)view(current);
 $('start').textContent='选择患者';$('start').onclick=()=>location.href='/';$('input').placeholder='向患者问诊，或输入检查、治疗行动';if(!sid){$('log').replaceChildren();add('请先点击“选择患者”，查阅入院资料并接诊。')}
 const chartDialog=document.createElement('dialog');chartDialog.style.cssText='background:#142a35;color:#e1ecef;border:1px solid #4c6976;border-radius:12px;width:min(800px,95vw);max-height:85vh;padding:28px';const chartTitle=document.createElement('h2');chartTitle.textContent='急诊病历 · 入院记录';const chartBody=document.createElement('div'),closeChart=document.createElement('button');closeChart.textContent='关闭';closeChart.onclick=()=>chartDialog.close();chartDialog.append(chartTitle,chartBody,closeChart);document.body.append(chartDialog);async function openChart(focus){try{const r=await api('chart');chartBody.replaceChildren();for(const [key,value]of Object.entries(r.chart)){const row=document.createElement('div');row.className='evidence';const label=document.createElement('strong');label.textContent=key;const content=document.createElement('p');content.textContent=value;row.append(label,content);chartBody.append(row);if(key===focus)row.dataset.focus='yes'}chartDialog.showModal();chartBody.querySelector('[data-focus]')?.scrollIntoView({block:'center'})}catch(e){add(e.message,'error')}}
-for(const [label,focus]of [['查看病历','主诉'],['病史与用药','既往史'],['患者信息','姓名']]){const button=document.createElement('button');button.className='secondary';button.textContent=label;button.disabled=!sid;button.onclick=()=>openChart(focus);$('start').parentElement.append(button)}
-</script><script src="/diagnosis.js"></script><script src="/simulation.js"></script></html>
+for(const [label,focus]of [['查看病历','主诉'],['病史与用药','既往史'],['患者信息','姓名']]){const button=document.createElement('button');button.className='secondary';button.textContent=label;button.disabled=!sid;button.onclick=()=>openChart(focus);$('chartTools').append(button)}
+</script><script src="/diagnosis.js"></script><script src="/simulation.js"></script><script src="/exam.js"></script></body></html>

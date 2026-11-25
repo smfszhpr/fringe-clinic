@@ -17,7 +17,7 @@
     let lastJob = null;
     let refreshing = false;
     const container = document.createElement('div');
-    container.className = 'bubble';
+    container.className = 'timeline';
     const heading = document.createElement('strong');
     heading.textContent = '诊疗时间线';
     const queue = document.createElement('div');
@@ -84,6 +84,9 @@
         }
         progress.textContent = running ? '后台正在安排或推演，游戏时钟暂停，可继续查阅病历。'
             : '游戏时间只在行动等待或主动推进时流逝。';
+        if (running && result.job?.operation === 'restoreBedside') {
+            progress.textContent = '正在从本局已执行的操作恢复监护连接和床旁读数…';
+        }
         if (revision !== result.revision) {
             revision = result.revision;
             view(result.view);

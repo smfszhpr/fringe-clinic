@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 420">
+  <defs>
+    <linearGradient id="surface" x2="1" y2=".22" gradientUnits="objectBoundingBox">
+      <stop stop-color="#658f92"/><stop offset=".33" stop-color="#bdd7d1"/><stop offset=".57" stop-color="#9abdb9"/><stop offset="1" stop-color="#567e83"/>
+    </linearGradient>
+    <pattern id="mesh" width="16" height="20" patternUnits="userSpaceOnUse">
+      <path d="M0 0l16 20M16 0L0 20M0 10h16" stroke="#254d51" opacity=".17" stroke-width=".6" fill="none"/>
+    </pattern>
+    <path id="half" d="M120 63Q111 63 108 57L107 69Q103 76 83 81Q73 85 70 100L62 149Q61 157 58 164L47 198L41 211Q36 215 35 222Q35 225 39 223L43 216L39 231Q39 236 43 234L51 225Q55 218 55 207L72 174Q78 165 80 157L89 130Q92 145 89 162L85 191Q82 207 86 229L92 274Q93 284 91 293Q87 309 92 334L98 371L95 384L90 394Q88 400 97 400L110 399Q115 398 113 390L110 379L113 339Q118 316 115 298L115 281L120 227Z"/>
+    <g id="shell">
+      <use href="#half"/><use href="#half" transform="translate(240) scale(-1 1)"/>
+      <path d="M120 15Q98 15 99 38L100 48Q101 60 112 68Q120 73 128 68Q139 60 140 48L141 38Q142 15 120 15Z"/>
+    </g>
+    <g id="seams" stroke="#395e63" opacity=".55" stroke-width="1" fill="none">
+      <path d="M108 69L116 81L101 87L84 82M84 83Q83 98 89 111L90 130M90 113Q102 122 116 121M90 157Q105 165 120 162M85 191Q97 194 108 205L119 220M89 218Q100 237 103 267M92 280Q100 274 110 281L108 290Q101 294 95 288M94 299L102 310L107 297M102 310L105 368M97 374L109 376M70 150Q74 151 79 156M61 164L69 166M46 199L54 203"/>
+    </g>
+  </defs>
+  <use href="#shell" fill="url(#surface)" stroke="#cee6df" stroke-width="1.2" stroke-linejoin="round"/>
+  <use href="#shell" fill="url(#mesh)"/>
+  <use href="#seams"/><use href="#seams" transform="translate(240) scale(-1 1)"/>
+  <path d="M120 88V150M120 173v16M102 43Q120 47 138 43" fill="none" stroke="#41686b" opacity=".42"/>
+</svg>
