@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "revise-muscle-strain",
+      "patientId": "leg-001",
+      "initialHypothesis": {"name": "活动后肌肉拉伤", "question": "能否解释既往发作和静息痛？"},
+      "turns": [
+        {"action": "只问患者昨晚安静躺着的时候，腿痛是否缓解，有没有因为疼痛醒过来。", "expect": "回答本次发作的静息和夜间症状，不自发透露此前数周的发作规律，也不直接给病因。", "clues": ["C5"], "forbiddenClues": ["C1", "C3", "C4"]},
+        {"action": "我暂时考虑是运动相关拉伤。问患者以前有没有类似发作，通常做什么会出现、停下来会不会缓解；昨晚休息又怎样。", "expect": "病人提供既往活动诱发、停步缓解及本次静息仍痛的信息。不能直接给隐藏病因。", "clues": ["C1"]},
+        {"action": "因为拉伤解释不了以前反复发作，我检查右腿是否有外伤，并与左脚对比足部皮温、颜色和足背搏动。只查体。", "expect": "提供实际双侧查体差异，不从单次体征断言最终病因。", "clues": ["C3"], "revision": {"name": "可能存在右腿血流问题", "supportsRounds": [2, 3], "supportsClues": ["C1", "C3"], "question": "需要什么影像验证局部血流异常？"}},
+        {"action": "根据既往活动相关症状和双侧查体的差异，安排床旁右大腿动脉双工超声并取得报告，暂不治疗。", "expect": "报告给出支持具体病变的影像所见；只有确诊证据，还未处置或复评。", "clues": ["C4"], "outcome": "in_progress"}
+      ],
+      "expectedFinal": "ended_incomplete",
+      "expectedChecks": {"diagnosis": 4, "intervention": null, "reassessment": null}
+    },
+    {
+      "id": "direct-correct-care",
+      "patientId": "leg-001",
+      "turns": [
+        {"action": "我怀疑是右大腿局部动脉瘤血栓形成导致患肢灌注障碍。由虚构诊室的血管团队在床旁完成右大腿动脉双工超声并报告结果，暂不治疗。", "expect": "给出与预设病变一致的影像证据，观察应在检查后出现。仅发现病变，不能宣布治疗完成。", "outcome": "in_progress"},
+        {"action": "依据已得到的影像结果，我确认游戏内由有资质的血管外科团队完成针对血栓性病变的手术血运重建；手术方式由该团队确定，假定资源与同意均齐备。记录已执行的处置和即时结果，不做后续复评。", "expect": "区分已执行处置和计划。模拟需记录实际处置及其即时结果，可说明不确定性。"},
+        {"action": "处置结束后重新做床旁右腿动脉双工超声，比较患肢灌注，记录当前状态是否适合进入后续监护。", "expect": "提供独立于处置记录的客观复评，与此前检查可对照，患肢灌注改善且当前可进入监护。"}
+      ],
+      "expectedFinal": "treatment_complete",
+      "expectedChecks": {"diagnosis": 1, "intervention": 2, "reassessment": 3}
+    },
+    {
+      "id": "correct-guess-no-evidence",
+      "patientId": "leg-001",
+      "turns": [
+        {"action": "问患者疼痛怎么开始，以及曾经吃过什么药。", "expect": "仅给患者知道的病史，不能由患者直接泄露隐藏诊断。"},
+        {"action": "我认为是右大腿局部动脉瘤血栓形成，但只记录这项个人判断，不做检查或治疗。", "expect": "正确猜测仍未确证，不得编造检查所见或治疗结果。"}
+      ],
+      "expectedFinal": "ended_incomplete",
+      "expectedChecks": {"diagnosis": null, "intervention": null, "reassessment": null}
+    },
+    {
+      "id": "symptom-relief-is-not-recovery",
+      "patientId": "leg-001",
+      "turns": [
+        {"action": "检查右腿体表，询问疼痛和行走能力，不做血管影像。", "expect": "描述可观察所见和主观症状；体表没有开放伤口不排除内部问题。"},
+        {"action": "只让患者休息，观察10分钟后询问疼痛变化。", "expect": "自然演化与症状变化应合理。休息未针对血管病变，不能宣布灌注已恢复。"}
+      ],
+      "expectedFinal": "ended_incomplete"
+    },
+    {
+      "id": "diagnosis-only",
+      "patientId": "leg-001",
+      "turns": [
+        {"action": "床旁做右大腿动脉双工超声以评估动脉血流，只检查并记录报告。", "expect": "检查结果应反映病变，且检查本身不会恢复灌注。"},
+        {"action": "记录报告，并询问患者此刻感觉，不进行治疗。", "expect": "保持上一轮发现和因果连续性，不因时间推进自动完成治疗。"}
+      ],
+      "expectedFinal": "ended_incomplete"
+    },
+    {
+      "id": "treated-but-not-reassessed",
+      "patientId": "leg-001",
+      "turns": [
+        {"action": "让血管团队完成床旁右大腿动脉双工超声，报告是否有导致灌注障碍的血栓性动脉病变。", "expect": "提供与病例一致的影像所见，不提供尚未实施的治疗结果。"},
+        {"action": "确认由游戏中的血管外科团队完成手术血运重建，具体方式由团队选择，假定资源与同意齐备。记录即时所见，先不安排独立复评。", "expect": "记录实际处置，不生成独立复评，也不因完成操作就判定达成治疗结局。"}
+      ],
+      "expectedFinal": "ended_incomplete",
+      "expectedChecks": {"diagnosis": 1, "intervention": 2, "reassessment": null}
+    }
+  ]
+}
