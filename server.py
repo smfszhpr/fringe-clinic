@@ -256,8 +256,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply({'view':self.public(nextState),'clarification':clarify,'usage':usage,'timing':plan,'committed':not bool(clarify),'findings':new if not clarify else [],'diagnosis':board(session)})
                 if self.path=='/api/assistant':
                     result,usage=model(
-                        '你是玩家的医学游戏助手。只有公开证据与玩家假设可用。比较解释力，'
+                        simulation.CLINIC_SETTING + '你是玩家的医学游戏助手。只有公开证据与玩家假设可用。比较解释力，'
                         '引用实际证据编号，说明反证或缺口，建议一项能区分假设的行动。'
+                        'reply和suggestedAction都必须遵守诊所设定。玩家问鉴别诊断时直接分析证据。'
+                        '需要专科知识时由你解释判断依据，建议玩家自己能在诊所完成的具体行动。'
+                        '若本地条件不足，说明哪项判断仍不确定，不能用转运、呼叫团队或等待会诊来代替回答。'
                         '不把假设当诊断。JSON {"reply":"...","suggestedAction":"..."}。',
                         {'chart':session.get('chart', {}), 'current': self.public(state),
                          'diagnosis':board(session), 'question':data['question']})

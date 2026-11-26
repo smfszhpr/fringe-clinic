@@ -6,6 +6,7 @@ import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
+from clinic_setting import CLINIC_SETTING
 from diagnosis import new_findings
 
 POOL = ThreadPoolExecutor(max_workers=8)
@@ -52,6 +53,14 @@ OBSERVE = '''你负责虚构病例的观察与表达，读取采集时的状态�
 只输出JSON {"findings":[{"method":"...","result":"...","sampleMinute":数字}],
 "speech":"患者自然表达或空字符串"}。问诊结果也记录在findings。'''
 
+ROUTER += CLINIC_SETTING + """
+目标或术式清楚的手术按intervention排程，并调度perioperative；有风险、证据不足仍按玩家明确决策推演。
+仅当目标歧义会改变实际处置时，用clarification问一个决策问题。例如“切掉大脑”没有明确治疗靶点，
+可问想解除颅内压力还是清除已发现的病灶，不擅自替换术式、不索要操作步骤。
+仅要求外援时请玩家指定本地行动；已明确本地术式则无需另请团队确认。"""
+SPECIALIST += CLINIC_SETTING
+FORECAST += CLINIC_SETTING
+OBSERVE += CLINIC_SETTING + '报告只写实际所见、测量限制和未解问题，不开具会诊或转院建议。'
 ROUTER += """
 额外输出bedside数组，列出本次实际使用的床旁设备，每个测量通道一项
 {op:connect|disconnect|record, id:稳定的英文通道标识, label:中文名称}。
